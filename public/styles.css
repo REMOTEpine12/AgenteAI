@@ -285,7 +285,7 @@ body {
 .tab-button {
     padding: 0.75rem 1.5rem;
     background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
+    color: #667eea;
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 25px;
     cursor: pointer;
@@ -297,7 +297,7 @@ body {
 
 .tab-button:hover {
     background: rgba(255, 255, 255, 0.2);
-    color: white;
+    color: #667eea;
     border-color: rgba(255, 255, 255, 0.4);
     transform: translateY(-2px);
 }
