@@ -449,9 +449,9 @@ class DemoRealtimeAgent {
     private connectionStatus!: HTMLElement;
     private latencyDisplay!: HTMLElement;
     private toolsCountDisplay!: HTMLElement;
-    private messageCountDisplay!: HTMLElement;
-    private sessionDurationDisplay!: HTMLElement;
-    private toolsUsedDisplay!: HTMLElement;
+    private messageCountDisplay: HTMLElement | null = null;
+    private sessionDurationDisplay: HTMLElement | null = null;
+    private toolsUsedDisplay: HTMLElement | null = null;
     private activeToolsDisplay!: HTMLElement;
     private toolItems!: NodeListOf<HTMLElement>;
     private exampleButtons!: NodeListOf<HTMLButtonElement>;
@@ -474,9 +474,9 @@ class DemoRealtimeAgent {
         this.connectionStatus = document.getElementById('demo-connection-status')!;
         this.latencyDisplay = document.getElementById('demo-latency')!;
         this.toolsCountDisplay = document.getElementById('demo-tools-count')!;
-        this.messageCountDisplay = document.getElementById('demo-message-count')!;
-        this.sessionDurationDisplay = document.getElementById('demo-session-duration')!;
-        this.toolsUsedDisplay = document.getElementById('demo-tools-used')!;
+        this.messageCountDisplay = document.getElementById('demo-message-count');
+        this.sessionDurationDisplay = document.getElementById('demo-session-duration');
+        this.toolsUsedDisplay = document.getElementById('demo-tools-used');
         this.activeToolsDisplay = document.getElementById('demo-active-tools')!;
         
         // Tool and example elements
@@ -503,6 +503,7 @@ class DemoRealtimeAgent {
         this.clearButton.addEventListener('click', () => this.clearChat());
 
         // Example buttons
+        // Ejemplos (si existen)
         this.exampleButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const example = button.getAttribute('data-example');
@@ -943,13 +944,13 @@ class DemoRealtimeAgent {
     private updateMetricsDisplay(): void {
         this.latencyDisplay.textContent = `${this.metrics.latency} ms`;
         this.toolsCountDisplay.textContent = this.metrics.toolsCount.toString();
-        this.messageCountDisplay.textContent = this.metrics.messageCount.toString();
-        this.toolsUsedDisplay.textContent = this.metrics.toolsUsed.toString();
+        if (this.messageCountDisplay) this.messageCountDisplay.textContent = this.metrics.messageCount.toString();
+        if (this.toolsUsedDisplay) this.toolsUsedDisplay.textContent = this.metrics.toolsUsed.toString();
         
         const duration = this.metrics.sessionDuration;
         const minutes = Math.floor(duration / 60);
         const seconds = duration % 60;
-        this.sessionDurationDisplay.textContent = `${minutes}m ${seconds}s`;
+        if (this.sessionDurationDisplay) this.sessionDurationDisplay.textContent = `${minutes}m ${seconds}s`;
     }
 
     private clearChat(): void {
