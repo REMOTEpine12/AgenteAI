@@ -11,54 +11,210 @@
         <header class="header">
             <h1>🤖 Agente IA</h1>
             <p>Proyecto para hacer un Agente de IA usando el SDK de ChatGPT</p>
+            
+            <!-- Navegación por pestañas -->
+            <nav class="tab-navigation">
+                <button class="tab-button active" data-tab="basic">Chat Básico</button>
+                <button class="tab-button" data-tab="demo_agente">Demo Agente IA</button>
+            </nav>
         </header>
 
         <main class="main-content">
-            <div class="status-section">
-                <h2>Estado del Servidor</h2>
-                <div id="server-status" class="status-card">
-                    <div class="loading">Verificando estado...</div>
+            <!-- Pestaña Chat Básico -->
+            <div id="basic-tab" class="tab-content active">
+                <div class="status-section">
+                    <h2>Estado del Servidor</h2>
+                    <div id="server-status" class="status-card">
+                        <div class="loading">Verificando estado...</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="chat-section">
-                <h2>Chat con el Agente</h2>
-                <div class="chat-container">
-                    <div id="chat-messages" class="chat-messages">
-                        <div class="message system-message">
-                            <strong>Sistema:</strong> ¡Bienvenido! El chat estará disponible una vez que se integre el SDK de ChatGPT.
+                <!-- <div class="chat-section">
+                    <h2>Chat con el Agente</h2>
+                    <div class="chat-container">
+                        <div id="chat-messages" class="chat-messages">
+                            <div class="message system-message">
+                                <strong>Sistema:</strong> ¡Bienvenido! El chat estará disponible una vez que se integre el SDK de ChatGPT.
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <input 
+                                type="text" 
+                                id="message-input" 
+                                placeholder="Escribe tu mensaje aquí..." 
+                                class="chat-input"
+                            >
+                            <button id="send-button" class="send-button">Enviar</button>
                         </div>
                     </div>
-                    <div class="chat-input-container">
-                        <input 
-                            type="text" 
-                            id="message-input" 
-                            placeholder="Escribe tu mensaje aquí..." 
-                            class="chat-input"
-                        >
-                        <button id="send-button" class="send-button">Enviar</button>
+                </div> -->
+
+                <div class="features-section">
+                    <h2>Características del Proyecto</h2>
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <h3>🌐 Servidor Node.js</h3>
+                            <p>Servidor Express.js para manejar las peticiones web y API</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>🤖 Integración ChatGPT</h3>
+                            <p>Preparado para integrar el SDK de OpenAI ChatGPT</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>💬 Interfaz de Chat</h3>
+                            <p>Interfaz web moderna para interactuar con el agente</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>📱 Diseño Responsivo</h3>
+                            <p>Adaptado para funcionar en dispositivos móviles y desktop</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="features-section">
-                <h2>Características del Proyecto</h2>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <h3>🌐 Servidor Node.js</h3>
-                        <p>Servidor Express.js para manejar las peticiones web y API</p>
+            <!-- Pestaña Demo Agente IA -->
+            <div id="demo_agente-tab" class="tab-content">
+                <div class="demo-header">
+                    <h2>🚀 Demo Agente IA en Tiempo Real</h2>
+                    <p>Experimenta con un agente de IA avanzado que puede usar herramientas, mantener contexto y responder en tiempo real</p>
+                    
+                    <div class="demo-status">
+                        <div id="demo-connection-status" class="connection-status">
+                            <span class="status-indicator"></span>
+                            <span class="status-text">Conectando...</span>
+                        </div>
+                        <div class="demo-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Latencia:</span>
+                                <span id="demo-latency" class="metric-value">-- ms</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Herramientas:</span>
+                                <span id="demo-tools-count" class="metric-value">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="feature-card">
-                        <h3>🤖 Integración ChatGPT</h3>
-                        <p>Preparado para integrar el SDK de OpenAI ChatGPT</p>
+                </div>
+
+                <div class="demo-main-container">
+                    <div class="demo-chat-section">
+                        <div class="demo-chat-container">
+                            <div id="demo-chat-messages" class="demo-chat-messages">
+                                <div class="message system-message">
+                                    <div class="message-header">
+                                        <strong>🤖 Agente IA</strong>
+                                        <span class="message-time">Ahora</span>
+                                    </div>
+                                    <div class="message-content">
+                                        ¡Hola! Soy tu agente de IA en tiempo real. Puedo ayudarte con:
+                                        <ul>
+                                            <li>🔍 Búsquedas en tiempo real</li>
+                                            <li>🧮 Cálculos complejos</li>
+                                            <li>🌤️ Información del clima</li>
+                                            <li>💱 Conversiones de moneda</li>
+                                            <li>📊 Análisis de datos</li>
+                                        </ul>
+                                        ¿En qué puedo ayudarte hoy?
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="demo-input-section">
+                                <div class="demo-tools-indicator">
+                                    <div id="demo-active-tools" class="active-tools"></div>
+                                </div>
+                                
+                                <div class="demo-input-container">
+                                    <textarea 
+                                        id="demo-message-input" 
+                                        placeholder="Escribe tu mensaje aquí... (Ej: ¿Cuál es el precio del Bitcoin hoy?)" 
+                                        class="demo-chat-input"
+                                        rows="2"
+                                    ></textarea>
+                                    <div class="demo-input-actions">
+                                        <button id="demo-clear-button" class="demo-action-button" title="Limpiar chat">
+                                            🗑️
+                                        </button>
+                                        <button id="demo-send-button" class="demo-send-button">
+                                            <span class="button-text">Enviar</span>
+                                            <span class="button-icon">🚀</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="feature-card">
-                        <h3>💬 Interfaz de Chat</h3>
-                        <p>Interfaz web moderna para interactuar con el agente</p>
-                    </div>
-                    <div class="feature-card">
-                        <h3>📱 Diseño Responsivo</h3>
-                        <p>Adaptado para funcionar en dispositivos móviles y desktop</p>
+
+                    <div class="demo-sidebar">
+                        <div class="demo-tools-panel">
+                            <h3>🛠️ Herramientas Disponibles</h3>
+                            <div class="tools-list">
+                                <div class="tool-item" data-tool="web_search">
+                                    <div class="tool-icon">🔍</div>
+                                    <div class="tool-info">
+                                        <div class="tool-name">Búsqueda Web</div>
+                                        <div class="tool-status">Listo</div>
+                                    </div>
+                                </div>
+                                <div class="tool-item" data-tool="calculator">
+                                    <div class="tool-icon">🧮</div>
+                                    <div class="tool-info">
+                                        <div class="tool-name">Calculadora</div>
+                                        <div class="tool-status">Listo</div>
+                                    </div>
+                                </div>
+                                <div class="tool-item" data-tool="weather">
+                                    <div class="tool-icon">🌤️</div>
+                                    <div class="tool-info">
+                                        <div class="tool-name">Clima</div>
+                                        <div class="tool-status">Listo</div>
+                                    </div>
+                                </div>
+                                <div class="tool-item" data-tool="currency">
+                                    <div class="tool-icon">💱</div>
+                                    <div class="tool-info">
+                                        <div class="tool-name">Divisas</div>
+                                        <div class="tool-status">Listo</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="demo-context-panel">
+                            <h3>🧠 Contexto de Sesión</h3>
+                            <div class="context-info">
+                                <div class="context-item">
+                                    <span class="context-label">Mensajes:</span>
+                                    <span id="demo-message-count" class="context-value">0</span>
+                                </div>
+                                <div class="context-item">
+                                    <span class="context-label">Duración:</span>
+                                    <span id="demo-session-duration" class="context-value">0s</span>
+                                </div>
+                                <div class="context-item">
+                                    <span class="context-label">Herramientas usadas:</span>
+                                    <span id="demo-tools-used" class="context-value">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="demo-examples-panel">
+                            <h3>💡 Ejemplos de Preguntas</h3>
+                            <div class="examples-list">
+                                <button class="example-button" data-example="¿Cuál es el precio actual del Bitcoin en euros?">
+                                    💰 Precio de Bitcoin
+                                </button>
+                                <button class="example-button" data-example="¿Qué tiempo hace en Madrid hoy?">
+                                    🌤️ Clima en Madrid
+                                </button>
+                                <button class="example-button" data-example="Calcula el 15% de propina para una cuenta de 85 euros">
+                                    🧮 Calcular propina
+                                </button>
+                                <button class="example-button" data-example="Busca información sobre TypeScript vs JavaScript">
+                                    🔍 Comparar tecnologías
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

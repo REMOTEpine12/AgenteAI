@@ -18,7 +18,7 @@ interface ChatResponse {
 }
 
 const app: Application = express();
-const PORT: number = parseInt(process.env.PORT || '3000', 10);
+const PORT: number = parseInt(process.env.PORT || '8080', 10);
 
 // Middleware para servir archivos estáticos
 app.use(express.static(path.join(__dirname, '../public')));
@@ -64,6 +64,73 @@ app.post('/api/chat', (req: Request<{}, ChatResponse, ChatRequest>, res: Respons
     };
     
     res.json(response);
+});
+
+// Endpoints adicionales para el demo agente
+app.post('/api/demo/tools/web-search', (req: Request, res: Response): void => {
+    const { query } = req.body;
+    
+    // Simular búsqueda web
+    setTimeout(() => {
+        res.json({
+            query,
+            results: [
+                { title: 'Resultado simulado 1', url: 'https://example.com/1', snippet: `Información sobre ${query}` },
+                { title: 'Resultado simulado 2', url: 'https://example.com/2', snippet: `Más datos sobre ${query}` }
+            ],
+            timestamp: new Date().toISOString()
+        });
+    }, Math.random() * 1000 + 500); // 0.5-1.5s delay
+});
+
+app.post('/api/demo/tools/calculator', (req: Request, res: Response): void => {
+    const { expression } = req.body;
+    
+    try {
+        // Evaluación simple (en producción usar una librería más segura)
+        const result = eval(expression.replace(/[^0-9+\-*/().% ]/g, ''));
+        
+        res.json({
+            expression,
+            result,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(400).json({
+            error: 'Expresión matemática inválida',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+app.get('/api/demo/tools/weather/:location', (req: Request, res: Response): void => {
+    const { location } = req.params;
+    
+    // Simular datos del clima
+    const weatherData: Record<string, { temp: number; condition: string; humidity: number }> = {
+        madrid: { temp: 18, condition: 'Parcialmente nublado', humidity: 65 },
+        barcelona: { temp: 22, condition: 'Soleado', humidity: 58 },
+        valencia: { temp: 20, condition: 'Despejado', humidity: 62 }
+    };
+    
+    const weather = weatherData[location.toLowerCase()] || { temp: 16, condition: 'Variable', humidity: 60 };
+    
+    setTimeout(() => {
+        res.json({
+            location,
+            ...weather,
+            timestamp: new Date().toISOString()
+        });
+    }, Math.random() * 800 + 400); // 0.4-1.2s delay
+});
+
+app.get('/api/demo/metrics', (req: Request, res: Response): void => {
+    res.json({
+        serverUptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        timestamp: new Date().toISOString(),
+        activeConnections: 1 // Placeholder
+    });
 });
 
 // Manejo de errores 404
