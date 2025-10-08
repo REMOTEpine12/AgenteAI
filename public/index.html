@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agente IA - ChatGPT</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🤖 Agente IA</h1>
+            <p>Proyecto para hacer un Agente de IA usando el SDK de ChatGPT</p>
+        </header>
+
+        <main class="main-content">
+            <div class="status-section">
+                <h2>Estado del Servidor</h2>
+                <div id="server-status" class="status-card">
+                    <div class="loading">Verificando estado...</div>
+                </div>
+            </div>
+
+            <div class="chat-section">
+                <h2>Chat con el Agente</h2>
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="message system-message">
+                            <strong>Sistema:</strong> ¡Bienvenido! El chat estará disponible una vez que se integre el SDK de ChatGPT.
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <input 
+                            type="text" 
+                            id="message-input" 
+                            placeholder="Escribe tu mensaje aquí..." 
+                            class="chat-input"
+                        >
+                        <button id="send-button" class="send-button">Enviar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-section">
+                <h2>Características del Proyecto</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>🌐 Servidor Node.js</h3>
+                        <p>Servidor Express.js para manejar las peticiones web y API</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🤖 Integración ChatGPT</h3>
+                        <p>Preparado para integrar el SDK de OpenAI ChatGPT</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>💬 Interfaz de Chat</h3>
+                        <p>Interfaz web moderna para interactuar con el agente</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📱 Diseño Responsivo</h3>
+                        <p>Adaptado para funcionar en dispositivos móviles y desktop</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2025 Agente IA - Proyecto de desarrollo</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
