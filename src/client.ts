@@ -362,9 +362,23 @@ class DemoToolSimulator {
         await this.delay(600, 1000);
         
         const weatherData: Record<string, { temp: number; condition: string; humidity: number; wind: string }> = {
+            // Ciudades españolas
             'madrid': { temp: 18, condition: 'Parcialmente nublado', humidity: 65, wind: '12 km/h' },
             'barcelona': { temp: 22, condition: 'Soleado', humidity: 58, wind: '8 km/h' },
-            'valencia': { temp: 20, condition: 'Despejado', humidity: 62, wind: '10 km/h' }
+            'valencia': { temp: 20, condition: 'Despejado', humidity: 62, wind: '10 km/h' },
+            
+            // Ciudades mexicanas
+            'cdmx': { temp: 24, condition: 'Parcialmente nublado', humidity: 45, wind: '10 km/h' },
+            'ciudad de mexico': { temp: 24, condition: 'Parcialmente nublado', humidity: 45, wind: '10 km/h' },
+            'ciudad de méxico': { temp: 24, condition: 'Parcialmente nublado', humidity: 45, wind: '10 km/h' },
+            'guadalajara': { temp: 28, condition: 'Soleado', humidity: 40, wind: '8 km/h' },
+            'monterrey': { temp: 32, condition: 'Despejado', humidity: 35, wind: '15 km/h' },
+            'cancun': { temp: 30, condition: 'Soleado', humidity: 75, wind: '12 km/h' },
+            'cancún': { temp: 30, condition: 'Soleado', humidity: 75, wind: '12 km/h' },
+            'puebla': { temp: 22, condition: 'Parcialmente nublado', humidity: 50, wind: '9 km/h' },
+            'tijuana': { temp: 21, condition: 'Despejado', humidity: 55, wind: '18 km/h' },
+            'merida': { temp: 33, condition: 'Soleado', humidity: 70, wind: '7 km/h' },
+            'mérida': { temp: 33, condition: 'Soleado', humidity: 70, wind: '7 km/h' }
         };
         
         const city = location.toLowerCase();
@@ -427,7 +441,15 @@ class DemoToolSimulator {
     }
 }
 
-// Clase principal del Demo Agente
+/**
+ * Clase principal del Demo Agente en Tiempo Real
+ * Inspirado en el Realtime Demo Agent de OpenAI
+ * Características:
+ * - WebSocket para comunicación bidireccional
+ * - Streaming de respuestas en tiempo real
+ * - Soporte para audio (entrada de voz)
+ * - Escucha continua (no por turnos)
+ */
 class DemoRealtimeAgent {
     private messages: DemoMessage[] = [];
     private metrics: DemoMetrics = {
@@ -440,6 +462,14 @@ class DemoRealtimeAgent {
     private sessionStartTime: Date = new Date();
     private toolSimulator: DemoToolSimulator = new DemoToolSimulator();
     private isProcessing: boolean = false;
+
+    // WebSocket y audio
+    private ws: WebSocket | null = null;
+    private audioContext: AudioContext | null = null;
+    private mediaStream: MediaStream | null = null;
+    private isRecording: boolean = false;
+    private currentStreamingMessage: string = '';
+    private useWebSocket: boolean = true; // Cambia a false para usar simulación
 
     // Elementos DOM
     private chatMessages!: HTMLElement;
@@ -461,6 +491,223 @@ class DemoRealtimeAgent {
         this.setupEventListeners();
         this.startMetricsUpdater();
         this.showWelcomeMessage();
+
+        // Inicializar WebSocket si está habilitado
+        if (this.useWebSocket) {
+            this.initializeWebSocket();
+        }
+    }
+
+    /**
+     * Inicializa la conexión WebSocket con el servidor
+     */
+    private initializeWebSocket(): void {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+        console.log('🔌 Conectando a WebSocket:', wsUrl);
+
+        try {
+            this.ws = new WebSocket(wsUrl);
+
+            this.ws.onopen = () => {
+                console.log('✅ WebSocket conectado');
+                this.updateConnectionStatus('connected');
+            };
+
+            this.ws.onmessage = (event) => {
+                this.handleWebSocketMessage(event.data);
+            };
+
+            this.ws.onerror = (error) => {
+                console.error('❌ Error en WebSocket:', error);
+                this.updateConnectionStatus('disconnected');
+            };
+
+            this.ws.onclose = () => {
+                console.log('🔌 WebSocket desconectado');
+                this.updateConnectionStatus('disconnected');
+
+                // Intentar reconectar después de 3 segundos
+                setTimeout(() => {
+                    if (this.useWebSocket) {
+                        this.initializeWebSocket();
+                    }
+                }, 3000);
+            };
+        } catch (error) {
+            console.error('Error al crear WebSocket:', error);
+            this.updateConnectionStatus('disconnected');
+            // Fallback a simulación
+            this.useWebSocket = false;
+        }
+    }
+
+    /**
+     * Maneja mensajes recibidos del servidor vía WebSocket
+     * @param data - Datos recibidos del servidor
+     */
+    private handleWebSocketMessage(data: string): void {
+        try {
+            const message = JSON.parse(data);
+
+            switch (message.type) {
+                case 'status':
+                    // Actualizar estado de conexión
+                    if (message.status === 'listening') {
+                        this.hideTypingIndicator();
+                    } else if (message.status === 'processing') {
+                        this.showTypingIndicator();
+                    }
+                    break;
+
+                case 'chunk':
+                    // Streaming: agregar chunk a mensaje actual
+                    this.currentStreamingMessage += message.chunk;
+                    this.updateStreamingMessage(this.currentStreamingMessage);
+                    break;
+
+                case 'response':
+                    // Respuesta completa
+                    this.hideTypingIndicator();
+
+                    const agentMessage: DemoMessage = {
+                        id: this.generateId(),
+                        type: 'agent',
+                        content: message.content,
+                        timestamp: new Date(),
+                        toolsUsed: message.metadata?.toolsUsed || [],
+                        metadata: message.metadata
+                    };
+
+                    this.addMessage(agentMessage);
+                    this.currentStreamingMessage = '';
+
+                    // Actualizar métricas
+                    if (message.metadata?.latency) {
+                        this.metrics.latency = message.metadata.latency;
+                    }
+                    if (message.metadata?.toolsUsed?.length) {
+                        this.metrics.toolsUsed++;
+                    }
+                    this.metrics.messageCount++;
+                    break;
+
+                case 'tool_call':
+                    // Herramienta siendo ejecutada
+                    if (message.toolName) {
+                        this.setToolActive(message.toolName);
+                    }
+                    break;
+
+                case 'tool_result':
+                    // Resultado de herramienta
+                    if (message.toolName) {
+                        this.setToolReady(message.toolName);
+                    }
+                    break;
+
+                case 'error':
+                    // Error del servidor
+                    this.hideTypingIndicator();
+
+                    const errorMessage: DemoMessage = {
+                        id: this.generateId(),
+                        type: 'system',
+                        content: `Error: ${message.error}`,
+                        timestamp: new Date()
+                    };
+
+                    this.addMessage(errorMessage);
+                    break;
+            }
+
+            this.updateMetricsDisplay();
+        } catch (error) {
+            console.error('Error al procesar mensaje WebSocket:', error);
+        }
+    }
+
+    /**
+     * Actualiza el mensaje que se está recibiendo por streaming
+     * @param content - Contenido parcial del mensaje
+     */
+    private updateStreamingMessage(content: string): void {
+        let streamingDiv = document.getElementById('streaming-message');
+
+        if (!streamingDiv) {
+            streamingDiv = document.createElement('div');
+            streamingDiv.id = 'streaming-message';
+            streamingDiv.className = 'message agent-message streaming';
+
+            const timeStr = new Date().toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            streamingDiv.innerHTML = `
+                <div class="message-header">
+                    <strong>🤖 Agente IA</strong>
+                    <span class="message-time">${timeStr}</span>
+                </div>
+                <div class="message-content"></div>
+            `;
+
+            this.chatMessages.appendChild(streamingDiv);
+        }
+
+        const contentDiv = streamingDiv.querySelector('.message-content');
+        if (contentDiv) {
+            contentDiv.textContent = content;
+        }
+
+        this.scrollToBottom();
+    }
+
+    /**
+     * Inicializa el contexto de audio para entrada de voz
+     */
+    private async initializeAudio(): Promise<void> {
+        try {
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            }
+
+            // Solicitar permiso para micrófono
+            this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            console.log('🎤 Micrófono inicializado');
+        } catch (error) {
+            console.error('Error al inicializar audio:', error);
+            alert('No se pudo acceder al micrófono. Verifica los permisos.');
+        }
+    }
+
+    /**
+     * Inicia la grabación de audio
+     */
+    private async startRecording(): Promise<void> {
+        if (!this.audioContext || !this.mediaStream) {
+            await this.initializeAudio();
+        }
+
+        if (this.mediaStream) {
+            this.isRecording = true;
+            console.log('🔴 Grabando...');
+
+            // TODO: Implementar grabación y envío de audio por WebSocket
+            // Por ahora, solo marcamos el estado
+        }
+    }
+
+    /**
+     * Detiene la grabación de audio
+     */
+    private stopRecording(): void {
+        this.isRecording = false;
+        console.log('⏹️ Grabación detenida');
+
+        // TODO: Enviar audio grabado al servidor
     }
 
     private initializeElements(): void {
@@ -533,6 +780,10 @@ class DemoRealtimeAgent {
         this.updateMetricsDisplay();
     }
 
+    /**
+     * Envía un mensaje al agente
+     * Si WebSocket está disponible, lo usa; de lo contrario, usa simulación
+     */
     private async sendMessage(): Promise<void> {
         if (this.isProcessing) return;
 
@@ -541,8 +792,6 @@ class DemoRealtimeAgent {
 
         this.isProcessing = true;
         this.updateSendButton(true);
-
-        const startTime = Date.now();
 
         // Add user message
         const userMessage: DemoMessage = {
@@ -556,65 +805,106 @@ class DemoRealtimeAgent {
         this.messageInput.value = '';
         this.messageInput.style.height = 'auto';
 
-        // Show typing indicator
-        this.showTypingIndicator();
-
         try {
-            // Analyze what tools are needed
-            const neededTools = await this.analyzeToolNeeds(content);
-            
-            // Execute tools if needed
-            let toolResults: any = {};
-            if (neededTools.length > 0) {
-                toolResults = await this.executeTools(content, neededTools);
+            // Usar WebSocket si está disponible y conectado
+            if (this.useWebSocket && this.ws && this.ws.readyState === WebSocket.OPEN) {
+                await this.sendMessageViaWebSocket(content);
+            } else {
+                // Fallback: usar simulación local
+                await this.sendMessageViaSimulation(content);
             }
-
-            // Generate response
-            const response = await this.generateResponse(content, toolResults, neededTools);
-            const latency = Date.now() - startTime;
-
-            // Remove typing indicator
-            this.hideTypingIndicator();
-
-            // Add agent response
-            const agentMessage: DemoMessage = {
-                id: this.generateId(),
-                type: 'agent',
-                content: response,
-                timestamp: new Date(),
-                toolsUsed: neededTools,
-                metadata: {
-                    latency,
-                    confidence: 0.95,
-                    sources: toolResults.sources || []
-                }
-            };
-
-            this.addMessage(agentMessage);
-
-            // Update metrics
-            this.metrics.latency = latency;
-            this.metrics.messageCount++;
-            if (neededTools.length > 0) {
-                this.metrics.toolsUsed++;
-            }
-
         } catch (error) {
             this.hideTypingIndicator();
-            
+
             const errorMessage: DemoMessage = {
                 id: this.generateId(),
                 type: 'system',
                 content: 'Lo siento, ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo.',
                 timestamp: new Date()
             };
-            
+
             this.addMessage(errorMessage);
         } finally {
             this.isProcessing = false;
             this.updateSendButton(false);
-            this.clearActiveTools();
         }
+    }
+
+    /**
+     * Envía mensaje usando WebSocket
+     * @param content - Contenido del mensaje
+     */
+    private async sendMessageViaWebSocket(content: string): Promise<void> {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            throw new Error('WebSocket no disponible');
+        }
+
+        // Limpiar mensaje de streaming anterior
+        const streamingMsg = document.getElementById('streaming-message');
+        if (streamingMsg) {
+            streamingMsg.remove();
+        }
+        this.currentStreamingMessage = '';
+
+        // Enviar mensaje al servidor
+        this.ws.send(JSON.stringify({
+            type: 'message',
+            content: content
+        }));
+
+        // El servidor responderá vía WebSocket, manejado en handleWebSocketMessage
+    }
+
+    /**
+     * Envía mensaje usando simulación local (sin WebSocket)
+     * @param content - Contenido del mensaje
+     */
+    private async sendMessageViaSimulation(content: string): Promise<void> {
+        const startTime = Date.now();
+
+        // Show typing indicator
+        this.showTypingIndicator();
+
+        // Analyze what tools are needed
+        const neededTools = await this.analyzeToolNeeds(content);
+
+        // Execute tools if needed
+        let toolResults: any = {};
+        if (neededTools.length > 0) {
+            toolResults = await this.executeTools(content, neededTools);
+        }
+
+        // Generate response
+        const response = await this.generateResponse(content, toolResults, neededTools);
+        const latency = Date.now() - startTime;
+
+        // Remove typing indicator
+        this.hideTypingIndicator();
+
+        // Add agent response
+        const agentMessage: DemoMessage = {
+            id: this.generateId(),
+            type: 'agent',
+            content: response,
+            timestamp: new Date(),
+            toolsUsed: neededTools,
+            metadata: {
+                latency,
+                confidence: 0.95,
+                sources: toolResults.sources || []
+            }
+        };
+
+        this.addMessage(agentMessage);
+
+        // Update metrics
+        this.metrics.latency = latency;
+        this.metrics.messageCount++;
+        if (neededTools.length > 0) {
+            this.metrics.toolsUsed++;
+        }
+
+        this.clearActiveTools();
     }
 
     private async analyzeToolNeeds(message: string): Promise<string[]> {
@@ -635,7 +925,11 @@ class DemoRealtimeAgent {
         }
 
         if (lowerMessage.includes('tiempo') || lowerMessage.includes('clima') ||
-            lowerMessage.includes('madrid') || lowerMessage.includes('temperatura')) {
+            lowerMessage.includes('temperatura') || lowerMessage.includes('madrid') || 
+            lowerMessage.includes('cdmx') || lowerMessage.includes('ciudad de mexico') ||
+            lowerMessage.includes('méxico') || lowerMessage.includes('mexico') ||
+            lowerMessage.includes('guadalajara') || lowerMessage.includes('monterrey') ||
+            lowerMessage.includes('cancún') || lowerMessage.includes('cancun')) {
             tools.push('weather');
         }
 
@@ -733,11 +1027,20 @@ class DemoRealtimeAgent {
     }
 
     private extractLocation(message: string): string | null {
-        const cities = ['madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao'];
+        // Ciudades españolas y mexicanas
+        const cities = [
+            'madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao',
+            'cdmx', 'ciudad de mexico', 'ciudad de méxico', 'guadalajara', 'monterrey', 
+            'cancun', 'cancún', 'puebla', 'tijuana', 'merida', 'mérida'
+        ];
         const lowerMessage = message.toLowerCase();
         
+        // Buscar coincidencias exactas primero (para frases como "Ciudad de México")
         for (const city of cities) {
             if (lowerMessage.includes(city)) {
+                // Capitalizar apropiadamente
+                if (city === 'cdmx') return 'CDMX';
+                if (city === 'ciudad de mexico' || city === 'ciudad de méxico') return 'Ciudad de México';
                 return city.charAt(0).toUpperCase() + city.slice(1);
             }
         }
