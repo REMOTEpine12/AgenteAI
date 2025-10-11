@@ -3,6 +3,10 @@ import path from 'path';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+
+// Cargar variables de entorno
+dotenv.config();
 
 /**
  * Interfaz para respuestas de la API REST
@@ -575,10 +579,11 @@ async function streamResponse(ws: WebSocket, response: string): Promise<void> {
         await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 50));
     }
 
-    // Señal de finalización
+    // Señal de finalización - solo notificar que terminó el streaming
     sendMessage(ws, {
-        type: 'response',
-        content: response
+        type: 'status',
+        status: 'listening',
+        content: 'Listo'
     });
 }
 

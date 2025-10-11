@@ -573,6 +573,16 @@ body {
     transform: translateY(-1px);
 }
 
+.demo-action-button.recording {
+    background: #dc3545;
+    color: white;
+    animation: pulse 1s infinite;
+}
+
+.demo-action-button.recording:hover {
+    background: #c82333;
+}
+
 .demo-send-button {
     padding: 0.75rem 1.5rem;
     background: linear-gradient(45deg, #667eea, #764ba2);

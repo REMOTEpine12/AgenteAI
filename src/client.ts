@@ -470,12 +470,18 @@ class DemoRealtimeAgent {
     private isRecording: boolean = false;
     private currentStreamingMessage: string = '';
     private useWebSocket: boolean = true; // Cambia a false para usar simulación
+    
+    // Reconocimiento de voz
+    private recognition: any = null;
+    private isVoiceEnabled: boolean = false;
+    private speechSynthesis: SpeechSynthesis = window.speechSynthesis;
 
     // Elementos DOM
     private chatMessages!: HTMLElement;
     private messageInput!: HTMLTextAreaElement;
     private sendButton!: HTMLButtonElement;
     private clearButton!: HTMLButtonElement;
+    private voiceButton!: HTMLButtonElement;
     private connectionStatus!: HTMLElement;
     private latencyDisplay!: HTMLElement;
     private toolsCountDisplay!: HTMLElement;
@@ -489,6 +495,7 @@ class DemoRealtimeAgent {
     constructor() {
         this.initializeElements();
         this.setupEventListeners();
+        this.initializeVoiceRecognition();
         this.startMetricsUpdater();
         this.showWelcomeMessage();
 
@@ -556,6 +563,10 @@ class DemoRealtimeAgent {
                     // Actualizar estado de conexión
                     if (message.status === 'listening') {
                         this.hideTypingIndicator();
+                        // Si hay un mensaje de streaming, finalizarlo
+                        if (this.currentStreamingMessage) {
+                            this.finalizeStreamingMessage(this.currentStreamingMessage);
+                        }
                     } else if (message.status === 'processing') {
                         this.showTypingIndicator();
                     }
@@ -568,19 +579,16 @@ class DemoRealtimeAgent {
                     break;
 
                 case 'response':
-                    // Respuesta completa
+                    // Respuesta completa (no se usa con streaming)
                     this.hideTypingIndicator();
-
-                    const agentMessage: DemoMessage = {
+                    this.addMessage({
                         id: this.generateId(),
                         type: 'agent',
                         content: message.content,
                         timestamp: new Date(),
                         toolsUsed: message.metadata?.toolsUsed || [],
                         metadata: message.metadata
-                    };
-
-                    this.addMessage(agentMessage);
+                    });
                     this.currentStreamingMessage = '';
 
                     // Actualizar métricas
@@ -665,49 +673,196 @@ class DemoRealtimeAgent {
     }
 
     /**
-     * Inicializa el contexto de audio para entrada de voz
+     * Finaliza el mensaje de streaming y lo convierte en mensaje final
+     * @param content - Contenido final del mensaje
      */
-    private async initializeAudio(): Promise<void> {
-        try {
-            if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    private finalizeStreamingMessage(content: string): void {
+        const streamingDiv = document.getElementById('streaming-message');
+        if (!streamingDiv) return;
+
+        // Crear mensaje final
+        const agentMessage: DemoMessage = {
+            id: this.generateId(),
+            type: 'agent',
+            content: content,
+            timestamp: new Date()
+        };
+
+        // Agregar el mensaje final al historial
+        this.messages.push(agentMessage);
+
+        // Actualizar métricas
+        this.metrics.messageCount++;
+
+        // Remover el div de streaming y agregar el mensaje final
+        streamingDiv.remove();
+        this.currentStreamingMessage = '';
+
+        // Crear el mensaje final con la misma estructura
+        const finalDiv = document.createElement('div');
+        finalDiv.className = 'message agent-message';
+        finalDiv.id = `message-${agentMessage.id}`;
+
+        const timeStr = agentMessage.timestamp.toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        finalDiv.innerHTML = `
+            <div class="message-header">
+                <strong>🤖 Agente IA</strong>
+                <span class="message-time">${timeStr}</span>
+            </div>
+            <div class="message-content">${this.formatMessageContent(content)}</div>
+        `;
+
+        this.chatMessages.appendChild(finalDiv);
+        this.scrollToBottom();
+
+        // Reproducir con voz si está habilitado
+        if (this.isVoiceEnabled) {
+            const cleanText = content
+                .replace(/<[^>]*>/g, '')
+                .replace(/\*\*(.*?)\*\*/g, '$1')
+                .replace(/\*(.*?)\*/g, '$1')
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                .trim();
+            
+            if (cleanText) {
+                setTimeout(() => {
+                    this.speakText(cleanText);
+                }, 500);
             }
-
-            // Solicitar permiso para micrófono
-            this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-            console.log('🎤 Micrófono inicializado');
-        } catch (error) {
-            console.error('Error al inicializar audio:', error);
-            alert('No se pudo acceder al micrófono. Verifica los permisos.');
         }
     }
 
     /**
-     * Inicia la grabación de audio
+     * Inicializa el reconocimiento de voz
      */
-    private async startRecording(): Promise<void> {
-        if (!this.audioContext || !this.mediaStream) {
-            await this.initializeAudio();
-        }
-
-        if (this.mediaStream) {
-            this.isRecording = true;
-            console.log('🔴 Grabando...');
-
-            // TODO: Implementar grabación y envío de audio por WebSocket
-            // Por ahora, solo marcamos el estado
+    private initializeVoiceRecognition(): void {
+        // Verificar si el navegador soporta reconocimiento de voz
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            this.recognition = new SpeechRecognition();
+            
+            this.recognition.continuous = false;
+            this.recognition.interimResults = false;
+            this.recognition.lang = 'es-ES';
+            
+            this.recognition.onstart = () => {
+                console.log('🎤 Reconocimiento de voz iniciado');
+                this.voiceButton.classList.add('recording');
+                this.voiceButton.textContent = '🔴';
+            };
+            
+            this.recognition.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                console.log('🎤 Texto reconocido:', transcript);
+                this.messageInput.value = transcript;
+                this.voiceButton.classList.remove('recording');
+                this.voiceButton.textContent = '🎤';
+                
+                // Enviar automáticamente el mensaje
+                this.sendMessage();
+            };
+            
+            this.recognition.onerror = (event: any) => {
+                console.error('Error en reconocimiento de voz:', event.error);
+                this.voiceButton.classList.remove('recording');
+                this.voiceButton.textContent = '🎤';
+                
+                let errorMessage = 'Error en el reconocimiento de voz';
+                if (event.error === 'no-speech') {
+                    errorMessage = 'No se detectó voz. Intenta de nuevo.';
+                } else if (event.error === 'audio-capture') {
+                    errorMessage = 'No se pudo acceder al micrófono.';
+                } else if (event.error === 'not-allowed') {
+                    errorMessage = 'Permisos de micrófono denegados.';
+                }
+                
+                this.addMessage({
+                    id: this.generateId(),
+                    type: 'system',
+                    content: errorMessage,
+                    timestamp: new Date()
+                });
+            };
+            
+            this.recognition.onend = () => {
+                this.voiceButton.classList.remove('recording');
+                this.voiceButton.textContent = '🎤';
+            };
+            
+            this.isVoiceEnabled = true;
+            console.log('✅ Reconocimiento de voz inicializado');
+        } else {
+            console.warn('⚠️ Reconocimiento de voz no soportado en este navegador');
+            this.voiceButton.style.display = 'none';
         }
     }
 
     /**
-     * Detiene la grabación de audio
+     * Alterna la grabación de voz
      */
-    private stopRecording(): void {
-        this.isRecording = false;
-        console.log('⏹️ Grabación detenida');
+    private toggleVoiceRecording(): void {
+        if (!this.isVoiceEnabled || !this.recognition) {
+            this.addMessage({
+                id: this.generateId(),
+                type: 'system',
+                content: 'Reconocimiento de voz no disponible en este navegador.',
+                timestamp: new Date()
+            });
+            return;
+        }
 
-        // TODO: Enviar audio grabado al servidor
+        if (this.isRecording) {
+            this.recognition.stop();
+        } else {
+            this.recognition.start();
+        }
+    }
+
+    /**
+     * Reproduce la respuesta del agente usando síntesis de voz
+     */
+    private speakText(text: string): void {
+        if (!this.speechSynthesis) {
+            console.warn('Síntesis de voz no disponible');
+            return;
+        }
+
+        // Cancelar cualquier síntesis anterior
+        this.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        utterance.volume = 0.8;
+
+        // Buscar una voz en español
+        const voices = this.speechSynthesis.getVoices();
+        const spanishVoice = voices.find(voice => 
+            voice.lang.startsWith('es') || voice.name.includes('Spanish')
+        );
+        
+        if (spanishVoice) {
+            utterance.voice = spanishVoice;
+        }
+
+        utterance.onstart = () => {
+            console.log('🔊 Reproduciendo respuesta...');
+        };
+
+        utterance.onend = () => {
+            console.log('🔇 Reproducción terminada');
+        };
+
+        utterance.onerror = (event) => {
+            console.error('Error en síntesis de voz:', event.error);
+        };
+
+        this.speechSynthesis.speak(utterance);
     }
 
     private initializeElements(): void {
@@ -716,6 +871,7 @@ class DemoRealtimeAgent {
         this.messageInput = document.getElementById('demo-message-input') as HTMLTextAreaElement;
         this.sendButton = document.getElementById('demo-send-button') as HTMLButtonElement;
         this.clearButton = document.getElementById('demo-clear-button') as HTMLButtonElement;
+        this.voiceButton = document.getElementById('demo-voice-button') as HTMLButtonElement;
         
         // Status elements
         this.connectionStatus = document.getElementById('demo-connection-status')!;
@@ -738,6 +894,9 @@ class DemoRealtimeAgent {
         // Send message
         this.sendButton.addEventListener('click', () => this.sendMessage());
         
+        // Voice button
+        this.voiceButton.addEventListener('click', () => this.toggleVoiceRecording());
+
         // Enter key to send (Shift+Enter for new line)
         this.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -845,6 +1004,9 @@ class DemoRealtimeAgent {
             streamingMsg.remove();
         }
         this.currentStreamingMessage = '';
+
+        // Mostrar indicador de escritura
+        this.showTypingIndicator();
 
         // Enviar mensaje al servidor
         this.ws.send(JSON.stringify({
@@ -1104,6 +1266,24 @@ class DemoRealtimeAgent {
 
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
+
+        // Reproducir con voz las respuestas del agente (excepto mensajes de sistema)
+        if (message.type === 'agent' && this.isVoiceEnabled) {
+            // Limpiar el contenido de HTML para la síntesis de voz
+            const cleanText = message.content
+                .replace(/<[^>]*>/g, '') // Remover HTML tags
+                .replace(/\*\*(.*?)\*\*/g, '$1') // Remover markdown bold
+                .replace(/\*(.*?)\*/g, '$1') // Remover markdown italic
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remover links markdown
+                .trim();
+            
+            if (cleanText) {
+                // Pequeño delay para que el usuario vea el mensaje antes de escucharlo
+                setTimeout(() => {
+                    this.speakText(cleanText);
+                }, 500);
+            }
+        }
     }
 
     private formatMessageContent(content: string): string {
