@@ -491,6 +491,7 @@ async function executeTool(toolName: string, message: string): Promise<any> {
     switch (toolName) {
         case 'weather':
             const location = extractLocation(message) || 'Madrid';
+            console.log(`🌤️ Obteniendo clima para: ${location}`);
             return await fetchWeatherData(location);
 
         case 'calculator':
@@ -513,15 +514,50 @@ async function executeTool(toolName: string, message: string): Promise<any> {
 }
 
 /**
- * Extrae ubicación del mensaje
+ * Extrae ubicación del mensaje usando patrones más flexibles
  */
 function extractLocation(message: string): string | null {
-    const cities = ['madrid', 'barcelona', 'valencia', 'cdmx', 'ciudad de méxico', 'guadalajara', 'monterrey'];
     const lowerMessage = message.toLowerCase();
+    
+    // Patrones comunes para solicitudes de clima
+    const weatherPatterns = [
+        /(?:clima|tiempo|temperatura|weather)\s+(?:de|en|del)\s+([^,.\?!]+)/i,
+        /(?:¿?cuál\s+es\s+el\s+clima\s+de?\s+([^,.\?!]+))/i,
+        /(?:dame\s+el\s+clima\s+de?\s+([^,.\?!]+))/i,
+        /(?:como\s+está\s+el\s+clima\s+en\s+([^,.\?!]+))/i,
+        /(?:que\s+clima\s+hace\s+en\s+([^,.\?!]+))/i
+    ];
 
-    for (const city of cities) {
+    // Buscar patrones específicos
+    for (const pattern of weatherPatterns) {
+        const match = lowerMessage.match(pattern);
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+    }
+
+    // Si no encuentra patrones específicos, buscar palabras clave de ciudades conocidas
+    const knownCities = [
+        'madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao', 'zaragoza',
+        'cdmx', 'ciudad de méxico', 'ciudad de mexico', 'guadalajara', 'monterrey', 
+        'cancún', 'cancun', 'puebla', 'tijuana', 'mérida', 'merida', 'leon',
+        'paris', 'london', 'londres', 'new york', 'miami', 'los angeles',
+        'tokyo', 'sydney', 'berlin', 'rome', 'roma', 'amsterdam'
+    ];
+
+    for (const city of knownCities) {
         if (lowerMessage.includes(city)) {
             return city;
+        }
+    }
+
+    // Si no encuentra nada específico, buscar palabras que podrían ser ciudades
+    // (palabras capitalizadas o con mayúsculas)
+    const words = message.split(/\s+/);
+    for (const word of words) {
+        // Si la palabra tiene mayúscula y es más larga que 2 caracteres
+        if (word.length > 2 && /[A-Z]/.test(word)) {
+            return word;
         }
     }
 

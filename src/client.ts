@@ -366,6 +366,9 @@ class DemoToolSimulator {
             'madrid': { temp: 18, condition: 'Parcialmente nublado', humidity: 65, wind: '12 km/h' },
             'barcelona': { temp: 22, condition: 'Soleado', humidity: 58, wind: '8 km/h' },
             'valencia': { temp: 20, condition: 'Despejado', humidity: 62, wind: '10 km/h' },
+            'sevilla': { temp: 25, condition: 'Soleado', humidity: 55, wind: '8 km/h' },
+            'bilbao': { temp: 16, condition: 'Nublado', humidity: 75, wind: '15 km/h' },
+            'zaragoza': { temp: 19, condition: 'Despejado', humidity: 60, wind: '10 km/h' },
             
             // Ciudades mexicanas
             'cdmx': { temp: 24, condition: 'Parcialmente nublado', humidity: 45, wind: '10 km/h' },
@@ -378,11 +381,26 @@ class DemoToolSimulator {
             'puebla': { temp: 22, condition: 'Parcialmente nublado', humidity: 50, wind: '9 km/h' },
             'tijuana': { temp: 21, condition: 'Despejado', humidity: 55, wind: '18 km/h' },
             'merida': { temp: 33, condition: 'Soleado', humidity: 70, wind: '7 km/h' },
-            'mérida': { temp: 33, condition: 'Soleado', humidity: 70, wind: '7 km/h' }
+            'mérida': { temp: 33, condition: 'Soleado', humidity: 70, wind: '7 km/h' },
+            'leon': { temp: 26, condition: 'Despejado', humidity: 45, wind: '12 km/h' },
+            
+            // Ciudades internacionales
+            'paris': { temp: 15, condition: 'Nublado', humidity: 70, wind: '10 km/h' },
+            'london': { temp: 12, condition: 'Lluvioso', humidity: 85, wind: '20 km/h' },
+            'londres': { temp: 12, condition: 'Lluvioso', humidity: 85, wind: '20 km/h' },
+            'new york': { temp: 8, condition: 'Nublado', humidity: 65, wind: '15 km/h' },
+            'miami': { temp: 28, condition: 'Soleado', humidity: 80, wind: '12 km/h' },
+            'los angeles': { temp: 22, condition: 'Despejado', humidity: 55, wind: '8 km/h' },
+            'tokyo': { temp: 10, condition: 'Parcialmente nublado', humidity: 60, wind: '10 km/h' },
+            'sydney': { temp: 26, condition: 'Soleado', humidity: 65, wind: '15 km/h' },
+            'berlin': { temp: 6, condition: 'Nublado', humidity: 75, wind: '12 km/h' },
+            'rome': { temp: 18, condition: 'Soleado', humidity: 60, wind: '8 km/h' },
+            'roma': { temp: 18, condition: 'Soleado', humidity: 60, wind: '8 km/h' },
+            'amsterdam': { temp: 9, condition: 'Lluvioso', humidity: 80, wind: '18 km/h' }
         };
         
         const city = location.toLowerCase();
-        const weather = weatherData[city] || { temp: 16, condition: 'Variable', humidity: 60, wind: '15 km/h' };
+        const weather = weatherData[city] || this.generateRandomWeather();
         
         return {
             location: location,
@@ -391,6 +409,20 @@ class DemoToolSimulator {
             humidity: weather.humidity,
             wind: weather.wind,
             summary: `En ${location}: ${weather.temp}°C, ${weather.condition.toLowerCase()}. Humedad: ${weather.humidity}%, Viento: ${weather.wind}.`
+        };
+    }
+
+    private generateRandomWeather(): { temp: number; condition: string; humidity: number; wind: string } {
+        const conditions = ['Soleado', 'Parcialmente nublado', 'Nublado', 'Despejado', 'Variable'];
+        const temps = [15, 18, 20, 22, 25, 28, 30];
+        const humidities = [45, 50, 55, 60, 65, 70, 75];
+        const winds = ['8 km/h', '10 km/h', '12 km/h', '15 km/h', '18 km/h'];
+        
+        return {
+            temp: temps[Math.floor(Math.random() * temps.length)],
+            condition: conditions[Math.floor(Math.random() * conditions.length)],
+            humidity: humidities[Math.floor(Math.random() * humidities.length)],
+            wind: winds[Math.floor(Math.random() * winds.length)]
         };
     }
 
@@ -1189,13 +1221,33 @@ class DemoRealtimeAgent {
     }
 
     private extractLocation(message: string): string | null {
-        // Ciudades españolas y mexicanas
-        const cities = [
-            'madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao',
-            'cdmx', 'ciudad de mexico', 'ciudad de méxico', 'guadalajara', 'monterrey', 
-            'cancun', 'cancún', 'puebla', 'tijuana', 'merida', 'mérida'
-        ];
         const lowerMessage = message.toLowerCase();
+        
+        // Patrones comunes para solicitudes de clima
+        const weatherPatterns = [
+            /(?:clima|tiempo|temperatura|weather)\s+(?:de|en|del)\s+([^,.\?!]+)/i,
+            /(?:¿?cuál\s+es\s+el\s+clima\s+de?\s+([^,.\?!]+))/i,
+            /(?:dame\s+el\s+clima\s+de?\s+([^,.\?!]+))/i,
+            /(?:como\s+está\s+el\s+clima\s+en\s+([^,.\?!]+))/i,
+            /(?:que\s+clima\s+hace\s+en\s+([^,.\?!]+))/i
+        ];
+
+        // Buscar patrones específicos
+        for (const pattern of weatherPatterns) {
+            const match = lowerMessage.match(pattern);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+        }
+
+        // Lista expandida de ciudades conocidas
+        const cities = [
+            'madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao', 'zaragoza',
+            'cdmx', 'ciudad de mexico', 'ciudad de méxico', 'guadalajara', 'monterrey', 
+            'cancun', 'cancún', 'puebla', 'tijuana', 'merida', 'mérida', 'leon',
+            'paris', 'london', 'londres', 'new york', 'miami', 'los angeles',
+            'tokyo', 'sydney', 'berlin', 'rome', 'roma', 'amsterdam'
+        ];
         
         // Buscar coincidencias exactas primero (para frases como "Ciudad de México")
         for (const city of cities) {
@@ -1203,7 +1255,18 @@ class DemoRealtimeAgent {
                 // Capitalizar apropiadamente
                 if (city === 'cdmx') return 'CDMX';
                 if (city === 'ciudad de mexico' || city === 'ciudad de méxico') return 'Ciudad de México';
+                if (city === 'new york') return 'New York';
+                if (city === 'los angeles') return 'Los Angeles';
                 return city.charAt(0).toUpperCase() + city.slice(1);
+            }
+        }
+
+        // Si no encuentra nada específico, buscar palabras que podrían ser ciudades
+        const words = message.split(/\s+/);
+        for (const word of words) {
+            // Si la palabra tiene mayúscula y es más larga que 2 caracteres
+            if (word.length > 2 && /[A-Z]/.test(word)) {
+                return word;
             }
         }
         
